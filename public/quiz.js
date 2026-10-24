@@ -50,32 +50,51 @@ function render() {
 }
 
 function renderIntro() {
+  const c = state.coords;
   app.innerHTML = `<section class="wrap intro">
     <h1>Welches Tier aus dem Tierheim <em>passt zu dir?</em></h1>
     <p>Beantworte 13 kurze Fragen zu deiner Persönlichkeit und deinem Alltag. Am Ende bekommst du Tiere aus Tierheimen in deiner Nähe, die zu dir passen – mit Charakterbogen und Link zur Vermittlungsseite.</p>
     <form class="place" id="place" novalidate>
+      <h2 class="place-title">Wo suchst du?</h2>
+      <button type="button" class="btn primary locate-btn" id="locate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>${c ? 'Standort erneut abfragen' : 'Meinen Standort verwenden'}</button>
+      <p class="loc-status${c ? ' ok' : ''}" id="loc-status" role="status">${c ? `Standort gefunden${c.accuracy ? ` (Genauigkeit ca. ${Math.round(c.accuracy)} m)` : ''}. Wir suchen im Umkreis um dich.` : 'Dein Standort wird nur für die Suche genutzt und nur in deinem Browser gespeichert.'}</p>
+      <div class="or"><span>oder per Postleitzahl</span></div>
       <div class="place-row">
         <label class="field" for="plz"><span>Postleitzahl</span><input id="plz" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="z. B. 10115" value="${esc(state.plz)}"></label>
         <label class="field" for="radius"><span>Umkreis</span><select id="radius">${[10, 25, 50, 100].map((r) => `<option value="${r}"${+state.radius === r ? ' selected' : ''}>${r} km</option>`).join('')}</select></label>
       </div>
-      <button type="button" class="btn ghost locate" id="locate">${state.coords ? 'Standort übernommen ✓' : 'Stattdessen meinen Standort verwenden'}</button>
       <p class="err" id="plz-err" role="alert"></p>
       <button class="btn primary" type="submit">${Object.keys(state.answers).length ? 'Test fortsetzen' : 'Test starten'}</button>
     </form>
   </section>`;
-  document.getElementById('locate').addEventListener('click', () => {
-    const err = document.getElementById('plz-err');
-    if (!navigator.geolocation) { err.textContent = 'Dein Browser kann den Standort nicht ermitteln. Bitte Postleitzahl eingeben.'; return; }
+  const status = document.getElementById('loc-status');
+  document.getElementById('locate').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    status.className = 'loc-status';
+    if (!window.isSecureContext) { status.textContent = 'Die Standortabfrage funktioniert nur über HTTPS. Bitte gib deine Postleitzahl ein.'; return; }
+    if (!navigator.geolocation) { status.textContent = 'Dein Browser kann den Standort nicht ermitteln. Bitte gib deine Postleitzahl ein.'; return; }
+    btn.disabled = true;
+    status.textContent = 'Standort wird ermittelt …';
     navigator.geolocation.getCurrentPosition((pos) => {
-      state.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      state.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      state.plz = '';
       render();
-    }, () => { err.textContent = 'Standort nicht freigegeben. Bitte Postleitzahl eingeben.'; }, { timeout: 8000 });
+    }, (err) => {
+      btn.disabled = false;
+      status.textContent = {
+        1: 'Du hast die Standortfreigabe abgelehnt. Kein Problem – gib einfach deine Postleitzahl ein.',
+        2: 'Dein Standort konnte gerade nicht ermittelt werden. Bitte gib deine Postleitzahl ein.',
+        3: 'Die Standortabfrage hat zu lange gedauert. Versuch es nochmal oder gib deine Postleitzahl ein.',
+      }[err.code] ?? 'Standort nicht verfügbar. Bitte gib deine Postleitzahl ein.';
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
   });
+  // Wer eine Postleitzahl eintippt, sucht dort statt am Standort
+  document.getElementById('plz').addEventListener('input', () => { if (state.coords) { state.coords = null; status.className = 'loc-status'; status.textContent = 'Wir suchen jetzt per Postleitzahl.'; } });
   document.getElementById('place').addEventListener('submit', (e) => {
     e.preventDefault();
     const plz = document.getElementById('plz').value.trim();
-    if (!state.coords && !/^\d{5}$/.test(plz)) { document.getElementById('plz-err').textContent = 'Bitte gib eine fünfstellige Postleitzahl ein oder nutze deinen Standort.'; return; }
-    Object.assign(state, { plz, radius: +document.getElementById('radius').value, step: 'quiz', index: Math.min(state.index, QUESTIONS.length - 1) });
+    if (!state.coords && !/^\d{5}$/.test(plz)) { document.getElementById('plz-err').textContent = 'Bitte nutze deinen Standort oder gib eine fünfstellige Postleitzahl ein.'; return; }
+    Object.assign(state, { plz: state.coords ? '' : plz, radius: +document.getElementById('radius').value, step: 'quiz', index: Math.min(state.index, QUESTIONS.length - 1) });
     render();
   });
 }
@@ -137,7 +156,7 @@ function typeOf(a) {
 async function renderResult() {
   app.innerHTML = '<section class="wrap loading" aria-busy="true">Suche passende Tiere …</section>';
   const p = profile(state.answers);
-  const location = state.coords ? { ...state.coords, radiusKm: state.radius } : { postalCode: state.plz, radiusKm: state.radius };
+  const location = state.coords ? { lat: state.coords.lat, lng: state.coords.lng, radiusKm: state.radius } : { postalCode: state.plz, radiusKm: state.radius };
   let data;
   try {
     const res = await fetch('/v1/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, profile: p, limit: 3 }) });
@@ -149,8 +168,10 @@ async function renderResult() {
     return;
   }
   const best = data.matches[0]?.animal;
-  const where = state.coords ? 'deinem Standort' : `PLZ ${state.plz}`;
-  const osm = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`Tierheim ${state.plz || ''}`.trim())}`;
+  const where = state.coords ? 'dein Standort' : `PLZ ${state.plz}`;
+  const osm = state.coords
+    ? `https://www.openstreetmap.org/search?query=Tierheim#map=12/${state.coords.lat.toFixed(4)}/${state.coords.lng.toFixed(4)}`
+    : `https://www.openstreetmap.org/search?query=${encodeURIComponent(`Tierheim ${state.plz}`)}`;
   const anyExample = data.matches.some((m) => m.animal.shelter.isExample);
 
   const sheet = ({ score, reasons, caveats, animal: x }, i) => {
