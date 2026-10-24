@@ -182,7 +182,8 @@ async function renderResult() {
     const alone = x.requirements.maxHoursAlone !== undefined && x.requirements.maxHoursAlone !== null ? `bis ${x.requirements.maxHoursAlone} Stunden` : 'keine Angabe';
     return `<article class="sheet${i === 0 ? ' first' : ''}">
       ${i === 0 ? '<span class="stamp">Bestes Match</span>' : ''}
-      <div class="sheet-head"><span class="avatar" aria-hidden="true">${emoji}</span>
+      ${x.photos?.[0] ? `<img class="sheet-photo" src="${esc(x.photos[0].url)}" alt="${esc(x.photos[0].alt ?? x.name)}" loading="lazy">` : ''}
+      <div class="sheet-head"><span class="avatar" aria-hidden="true">${x.photos?.[0]?.thumbUrl ? `<img src="${esc(x.photos[0].thumbUrl)}" alt="">` : emoji}</span>
         <div><h3>${esc(x.name)}</h3><small>${esc(label)}${x.breed ? ` · ${esc(x.breed)}` : ''}${x.groupSize > 1 ? ` · ${x.groupSize} Tiere, nur zusammen` : ''}</small></div>
         <div class="match" aria-label="${score} Prozent Passung"><b>${score}%</b><span>Passung</span></div></div>
       <dl class="form">

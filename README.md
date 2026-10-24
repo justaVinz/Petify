@@ -4,6 +4,7 @@ Persönlichkeitstest, der passende Tiere aus Tierheimen in der Umgebung vorschl�
 
 - **Quiz** (`/`): 13 Fragen zu Persönlichkeit und Lebensumständen → Tier-Typ und die passendsten Tiere mit Charakterbogen und Link zur Tierheimseite
 - **API** (`/v1/…`): Tierheime legen Tiere im einheitlichen Format an; öffentliche Suche und Matching
+- **Verwaltung** (`/verwaltung.html`): Tierheime melden sich per E-Mail-Link oder Google an, importieren Tiere per Excel mit Fotos und pflegen den Status
 - **Doku** (`/docs.html`): interaktive OpenAPI-Dokumentation, Spezifikation unter `/openapi.json`
 
 Stack: Node.js 22, Express, PostgreSQL, JSON-Schema-Prüfung mit Ajv.
@@ -18,6 +19,31 @@ npm run db:setup              # Schema + Beispiel-Tierheime; gibt deren API-Schl
 npm start                     # → http://localhost:3200
 npm test
 ```
+
+## Verwaltungsbereich für Tierheime
+
+**Anmeldung ohne Passwort**
+- *E-Mail-Link:* 15 Minuten gültig, nur einmal nutzbar. Der Link öffnet die Seite, erst die Seite bestätigt die Anmeldung. So verbrauchen E-Mail-Scanner, die Links vorab öffnen, den Link nicht. Ohne `SMTP_URL` steht der Link im Server-Log (Entwicklung).
+- *Google:* OpenID Connect mit PKCE, nur mit bestätigter Google-Adresse. Einrichtung: in der Google Cloud Console einen OAuth-Client „Webanwendung“ anlegen, als Weiterleitungs-URI `APP_URL/auth/google/callback` eintragen, `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` setzen. Ohne diese Werte wird der Google-Button ausgeblendet.
+- Sitzungen liegen als Hash in der Datenbank; der Browser bekommt nur ein HttpOnly-Cookie (`SameSite=Lax`, bei HTTPS `Secure`). Schreibende Anfragen brauchen zusätzlich den Header `x-pfotenmatch: 1` (CSRF-Schutz).
+
+**Ablauf für ein neues Tierheim**
+1. Anmelden → Tierheim eintragen (Status *in Prüfung*). Die anmeldende Person wird Admin.
+2. Tiere per Excel importieren – sie sind gespeichert, aber noch nicht öffentlich.
+3. Die Plattform schaltet frei: `POST /v1/admin/shelters/{id}/status` mit `{"status":"active"}` und `X-Admin-Token`. Offene Anträge: `GET /v1/admin/shelters?status=pending`.
+4. Ab dann erscheinen vermittelbare Tiere in Suche und Quiz. Admins können Kolleg:innen per E-Mail-Adresse hinzufügen und einen API-Schlüssel erzeugen.
+
+**Excel-Import**
+- Vorlage mit Auswahllisten, Zahlenprüfung (1–5), Hinweisen in den Kopfzellen und einem Blatt „Anleitung“: `GET /portal/api/import-template.xlsx`.
+- Deutsche Werte („Hund“, „ja“, „ab Alter“, „10.02.2026“) werden ins Einheitsformat übersetzt. Jede Zeile wird gegen das Schema geprüft; alle Fehler einer Zeile werden auf einmal mit Spaltennamen gemeldet.
+- Erst Vorschau (neu / aktualisieren / übersprungen, gefundene und fehlende Fotos), dann Übernahme. Abgleich über die Karteinummer, ein erneuter Import aktualisiert also.
+- Fotos werden zusammen mit der Datei hochgeladen; in der Spalte „Fotos“ stehen die Dateinamen (Groß-/Kleinschreibung egal) oder https-Links.
+
+**Fotos**: JPG, PNG oder WebP bis 12 MB, höchstens 12 pro Tier. Der Inhalt wird geprüft, das Bild gedreht (EXIF), auf 1600 px verkleinert, als WebP gespeichert und um Metadaten wie GPS-Koordinaten bereinigt. Dazu ein quadratisches Vorschaubild (480 px). Ablage in `UPLOAD_DIR`, ausgeliefert unter `/media/…`. Für den Echtbetrieb sollte die Ablage auf einen Objektspeicher (z. B. S3-kompatibel) wechseln.
+
+## Eigene Daten statt Website-Daten
+
+Pfotenmatch speichert die Tierprofile selbst; die Website des Tierheims bleibt über den Pflicht-Link die Stelle, an der vermittelt wird. Das automatische Einsammeln von Tierheim-Websites (Scraping) ist bewusst nicht vorgesehen: Texte, Fotos und Datenbanken sind rechtlich geschützt, Websites liefern keine vergleichbaren Charakterwerte, und Vermittlungen würden spät oder gar nicht erkannt.
 
 ## Das einheitliche Tierprofil
 
@@ -79,4 +105,4 @@ Mit Koordinaten (`lat`/`lng`, z. B. aus der Standortfreigabe im Browser) wird pe
 ## Stand des Prototyps
 
 - Beispiel-Tierheime und -Tiere in `db/examples.json` sind erfunden (`isExample: true`, Links auf `.example`).
-- Noch offen für den Echtbetrieb: Rate-Limiting, Foto-Upload, Verwaltungsoberfläche für Tierheime, Datenschutzprüfung, PLZ-Geocoding, Benachrichtigung bei Statuswechsel (Webhooks).
+- Noch offen für den Echtbetrieb: Rate-Limiting für die öffentliche API (der Login-Versand ist begrenzt, aber nur im Arbeitsspeicher), Objektspeicher für Fotos, Datenschutzerklärung und Auftragsverarbeitung (Mailversand, Hosting), Oberfläche für die Freischaltung, Einzelbearbeitung von Tieren im Formular, PLZ-Geocoding, Benachrichtigung bei Statuswechsel (Webhooks).

@@ -5,6 +5,10 @@ import { validateAnimal, animalSchema } from './validate.js';
 import { matchAnimal, haversineKm } from './matching.js';
 import { requireShelter, requireAdmin, newApiKey, hashKey, HttpError } from './auth.js';
 import { openapi } from './openapi.js';
+import { ANIMAL_SELECT, animalOut, readAnimal, createAnimal, replaceAnimal, setStatus, deleteAnimal, upsertAnimal } from './animals.js';
+import { authRouter, loadUser } from './accounts.js';
+import { portalRouter } from './portal.js';
+import { uploadDir } from './media.js';
 
 const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -45,17 +49,6 @@ const shelterPublic = (s) => ({
   website: s.website, email: s.email, phone: s.phone, isExample: s.is_example,
 });
 
-const animalOut = (row, extra = {}) => ({
-  id: row.id,
-  ...row.data,
-  shelter: { id: row.shelter_id, name: row.shelter_name, city: row.city, postalCode: row.postal_code, website: row.website, isExample: row.is_example },
-  createdAt: row.created_at, updatedAt: row.updated_at,
-  ...extra,
-});
-
-const ANIMAL_SELECT = `SELECT a.*, s.name AS shelter_name, s.city, s.postal_code, s.website, s.lat, s.lng, s.is_example
-  FROM animals a JOIN shelters s ON s.id = a.shelter_id`;
-
 // Umkreis: mit Koordinaten per Luftlinie, sonst über die ersten zwei Ziffern der Postleitzahl (Leitregion)
 function locate(rows, loc) {
   if (!loc) return rows.map((r) => ({ row: r, distanceKm: null }));
@@ -82,25 +75,6 @@ function parseLocation(q) {
   }
   if (q.radiusKm !== undefined) loc.radiusKm = Math.min(500, Math.max(1, Number(q.radiusKm) || 25));
   return Object.keys(loc).length ? loc : null;
-}
-
-async function ownAnimal(req) {
-  if (!isUuid(req.params.id)) throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
-  const { rows: [row] } = await pool.query('SELECT * FROM animals WHERE id = $1', [req.params.id]);
-  if (!row) throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
-  if (row.shelter_id !== req.shelter.id) throw new HttpError(403, 'forbidden', 'Dieses Tier gehört zu einem anderen Tierheim.');
-  return row;
-}
-
-function requireValid(body) {
-  const result = validateAnimal(body);
-  if (!result.ok) throw new HttpError(422, 'invalid_animal', 'Das Tierprofil entspricht nicht dem Schema.', result.errors);
-  return result.value;
-}
-
-async function readAnimal(id) {
-  const { rows: [row] } = await pool.query(`${ANIMAL_SELECT} WHERE a.id = $1`, [id]);
-  return row;
 }
 
 export function createApp({ staticDir } = {}) {
@@ -130,12 +104,12 @@ export function createApp({ staticDir } = {}) {
   // --- öffentlich ---
   v1.get('/shelters', asyncRoute(async (_req, res) => {
     const { rows } = await pool.query(`SELECT s.*, count(a.id) FILTER (WHERE a.status = 'available')::int AS available
-      FROM shelters s LEFT JOIN animals a ON a.shelter_id = s.id GROUP BY s.id ORDER BY s.name`);
+      FROM shelters s LEFT JOIN animals a ON a.shelter_id = s.id WHERE s.status = 'active' GROUP BY s.id ORDER BY s.name`);
     res.json({ shelters: rows.map((s) => ({ ...shelterPublic(s), availableAnimals: s.available })) });
   }));
 
   v1.get('/shelters/:id', asyncRoute(async (req, res) => {
-    const { rows: [s] } = isUuid(req.params.id) ? await pool.query('SELECT * FROM shelters WHERE id = $1', [req.params.id]) : { rows: [] };
+    const { rows: [s] } = isUuid(req.params.id) ? await pool.query("SELECT * FROM shelters WHERE id = $1 AND status = 'active'", [req.params.id]) : { rows: [] };
     if (!s) throw new HttpError(404, 'not_found', 'Tierheim nicht gefunden.');
     res.json(shelterPublic(s));
   }));
@@ -144,7 +118,7 @@ export function createApp({ staticDir } = {}) {
     const status = req.query.status ?? 'available';
     if (!animalSchema.properties.status.enum.includes(status)) throw new HttpError(400, 'invalid_status', 'Unbekannter Status.');
     const params = [status];
-    let where = 'a.status = $1';
+    let where = "a.status = $1 AND s.status = 'active'";
     if (req.query.species) {
       params.push(String(req.query.species).split(','));
       where += ` AND a.species = ANY($${params.length})`;
@@ -158,7 +132,7 @@ export function createApp({ staticDir } = {}) {
 
   v1.get('/animals/:id', asyncRoute(async (req, res) => {
     const row = isUuid(req.params.id) ? await readAnimal(req.params.id) : null;
-    if (!row) throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
+    if (!row || row.shelter_status !== 'active') throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
     res.json(animalOut(row));
   }));
 
@@ -167,7 +141,7 @@ export function createApp({ staticDir } = {}) {
     const body = structuredClone(req.body ?? {});
     if (!checkMatch(body)) throw new HttpError(400, 'invalid_profile', 'Profil unvollständig oder ungültig.', checkMatch.errors.map((e) => `${e.instancePath || '(body)'} ${e.message}`));
     const params = ['available'];
-    let where = 'a.status = $1';
+    let where = "a.status = $1 AND s.status = 'active'";
     if (body.species?.length) { params.push(body.species); where += ' AND a.species = ANY($2)'; }
     const { rows } = await pool.query(`${ANIMAL_SELECT} WHERE ${where}`, params);
     const located = locate(rows, body.location);
@@ -190,42 +164,20 @@ export function createApp({ staticDir } = {}) {
   }));
 
   v1.post('/animals', requireShelter, asyncRoute(async (req, res) => {
-    const doc = requireValid(req.body);
-    try {
-      const { rows: [row] } = await pool.query(
-        'INSERT INTO animals (shelter_id, external_id, status, species, name, data) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-        [req.shelter.id, doc.externalId, doc.status, doc.species, doc.name, doc]);
-      res.status(201).location(`/v1/animals/${row.id}`).json(animalOut(await readAnimal(row.id)));
-    } catch (err) {
-      if (err.code === '23505') throw new HttpError(409, 'duplicate_external_id', `externalId „${doc.externalId}“ existiert bereits. Zum Ändern PUT /v1/animals/{id} oder den Import nutzen.`);
-      throw err;
-    }
+    const row = await createAnimal(req.shelter.id, req.body);
+    res.status(201).location(`/v1/animals/${row.id}`).json(animalOut(row));
   }));
 
   v1.put('/animals/:id', requireShelter, asyncRoute(async (req, res) => {
-    await ownAnimal(req);
-    const doc = requireValid(req.body);
-    try {
-      await pool.query('UPDATE animals SET external_id=$2, status=$3, species=$4, name=$5, data=$6, updated_at=now() WHERE id=$1',
-        [req.params.id, doc.externalId, doc.status, doc.species, doc.name, doc]);
-    } catch (err) {
-      if (err.code === '23505') throw new HttpError(409, 'duplicate_external_id', `externalId „${doc.externalId}“ gehört schon zu einem anderen Tier.`);
-      throw err;
-    }
-    res.json(animalOut(await readAnimal(req.params.id)));
+    res.json(animalOut(await replaceAnimal(req.shelter.id, req.params.id, req.body)));
   }));
 
   v1.patch('/animals/:id/status', requireShelter, asyncRoute(async (req, res) => {
-    const row = await ownAnimal(req);
-    const status = req.body?.status;
-    if (!animalSchema.properties.status.enum.includes(status)) throw new HttpError(422, 'invalid_status', `status muss einer von ${animalSchema.properties.status.enum.join(', ')} sein.`);
-    await pool.query('UPDATE animals SET status=$2, data = jsonb_set(data, \'{status}\', to_jsonb($2::text)), updated_at=now() WHERE id=$1', [row.id, status]);
-    res.json(animalOut(await readAnimal(row.id)));
+    res.json(animalOut(await setStatus(req.shelter.id, req.params.id, req.body?.status)));
   }));
 
   v1.delete('/animals/:id', requireShelter, asyncRoute(async (req, res) => {
-    const row = await ownAnimal(req);
-    await pool.query('DELETE FROM animals WHERE id = $1', [row.id]);
+    await deleteAnimal(req.shelter.id, req.params.id);
     res.status(204).end();
   }));
 
@@ -238,9 +190,7 @@ export function createApp({ staticDir } = {}) {
       const v = validateAnimal(item);
       if (!v.ok) { results.push({ index, externalId: item?.externalId ?? null, result: 'invalid', errors: v.errors }); continue; }
       const d = v.value;
-      const { rows: [row] } = await pool.query(`INSERT INTO animals (shelter_id, external_id, status, species, name, data) VALUES ($1,$2,$3,$4,$5,$6)
-        ON CONFLICT (shelter_id, external_id) DO UPDATE SET status=EXCLUDED.status, species=EXCLUDED.species, name=EXCLUDED.name, data=EXCLUDED.data, updated_at=now()
-        RETURNING id, (xmax = 0) AS inserted`, [req.shelter.id, d.externalId, d.status, d.species, d.name, d]);
+      const row = await upsertAnimal(req.shelter.id, d);
       results.push({ index, externalId: d.externalId, id: row.id, result: row.inserted ? 'created' : 'updated' });
     }
     const count = (k) => results.filter((r) => r.result === k).length;
@@ -272,8 +222,28 @@ export function createApp({ staticDir } = {}) {
     res.json({ apiKey });
   }));
 
+  v1.get('/admin/shelters', requireAdmin, asyncRoute(async (req, res) => {
+    const status = ['pending', 'active', 'suspended'].includes(req.query.status) ? req.query.status : 'pending';
+    const { rows } = await pool.query(`SELECT s.*, (SELECT array_agg(email) FROM shelter_members m WHERE m.shelter_id = s.id) AS members
+      FROM shelters s WHERE s.status = $1 ORDER BY s.created_at`, [status]);
+    res.json({ shelters: rows.map((s) => ({ ...shelterPublic(s), status: s.status, members: s.members ?? [], createdAt: s.created_at })) });
+  }));
+
+  v1.post('/admin/shelters/:id/status', requireAdmin, asyncRoute(async (req, res) => {
+    const status = req.body?.status;
+    if (!['pending', 'active', 'suspended'].includes(status)) throw new HttpError(422, 'invalid_status', 'status: pending, active oder suspended');
+    const { rows: [s] } = isUuid(req.params.id) ? await pool.query('UPDATE shelters SET status = $2 WHERE id = $1 RETURNING *', [req.params.id, status]) : { rows: [] };
+    if (!s) throw new HttpError(404, 'not_found', 'Tierheim nicht gefunden.');
+    res.json({ ...shelterPublic(s), status: s.status });
+  }));
+
   v1.use((_req, _res, next) => next(new HttpError(404, 'not_found', 'Unbekannter Endpunkt.')));
   app.use('/v1', v1);
+
+  // Login und Verwaltungsbereich (Sitzungs-Cookie, nur gleiche Herkunft)
+  app.use('/auth', loadUser, authRouter());
+  app.use('/portal/api', loadUser, portalRouter());
+  app.use('/media', express.static(uploadDir, { maxAge: '30d', immutable: true, index: false, fallthrough: false }));
 
   app.get('/openapi.json', (_req, res) => res.json(openapi));
   if (staticDir) {
@@ -282,6 +252,9 @@ export function createApp({ staticDir } = {}) {
 
   app.use((err, _req, res, _next) => {
     if (err.type === 'entity.parse.failed') err = new HttpError(400, 'invalid_json', 'Der Body ist kein gültiges JSON.');
+    if (err.code === 'LIMIT_FILE_SIZE') err = new HttpError(413, 'file_too_large', 'Eine Datei ist zu groß (höchstens 12 MB).');
+    if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') err = new HttpError(413, 'too_many_files', 'Zu viele Dateien auf einmal (höchstens 60 Fotos).');
+    if (err.status === 404 && err.expose && !(err instanceof HttpError)) err = new HttpError(404, 'not_found', 'Nicht gefunden.');
     if (!(err instanceof HttpError)) { console.error(err); err = new HttpError(500, 'internal', 'Interner Serverfehler.'); }
     res.status(err.status).json({ error: { code: err.code, message: err.message, ...(err.details ? { details: err.details } : {}) } });
   });

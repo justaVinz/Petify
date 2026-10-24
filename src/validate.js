@@ -15,7 +15,11 @@ function describe(err) {
     case 'required': return `${path === '(Tierprofil)' ? '' : `${path}.`}${err.params.missingProperty}: Pflichtfeld fehlt`;
     case 'additionalProperties': return `${path}: unbekanntes Feld „${err.params.additionalProperty}“`;
     case 'enum': return `${path}: erlaubt sind ${err.params.allowedValues.join(', ')}`;
-    case 'minimum': case 'maximum': return `${path}: muss zwischen den erlaubten Grenzen liegen (${err.message})`;
+    case 'minimum': return `${path}: muss mindestens ${err.params.limit} sein`;
+    case 'maximum': return `${path}: darf höchstens ${err.params.limit} sein`;
+    case 'minLength': return `${path}: zu kurz (mindestens ${err.params.limit} Zeichen)`;
+    case 'maxLength': return `${path}: zu lang (höchstens ${err.params.limit} Zeichen)`;
+    case 'pattern': case 'format': return `${path}: ungültiges Format`;
     case 'type': return `${path}: falscher Typ, erwartet ${err.params.type}`;
     default: return `${path}: ${err.message}`;
   }
