@@ -1,4 +1,4 @@
-// OpenAPI-Beschreibung der Pfotenmatch-API (wird unter /openapi.json und /docs ausgeliefert)
+// OpenAPI-Beschreibung der Petify-API (wird unter /openapi.json und /docs ausgeliefert)
 import { animalSchema } from './validate.js';
 
 const { $schema, $id, $defs, ...animal } = animalSchema;
@@ -13,7 +13,7 @@ const idParam = { name: 'id', in: 'path', required: true, schema: { type: 'strin
 export const openapi = {
   openapi: '3.1.0',
   info: {
-    title: 'Pfotenmatch – Tierheim-API',
+    title: 'Petify – Tierheim-API',
     version: '0.1.0',
     description: 'Einheitliche Schnittstelle, über die Tierheime vermittelbare Tiere erfassen. '
       + 'Lesende Endpunkte sind öffentlich. Schreibende Endpunkte brauchen den API-Schlüssel des Tierheims als Bearer-Token. '

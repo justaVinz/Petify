@@ -261,7 +261,7 @@ export function portalRouter() {
   // --- Excel-Import ---
   r.get('/import-template.xlsx', asyncRoute(async (_req, res) => {
     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.set('Content-Disposition', 'attachment; filename="pfotenmatch-tiere-vorlage.xlsx"');
+    res.set('Content-Disposition', 'attachment; filename="petify-tiere-vorlage.xlsx"');
     res.send(Buffer.from(await buildTemplate()));
   }));
 

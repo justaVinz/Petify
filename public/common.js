@@ -9,10 +9,10 @@ export const REQUEST_STATUS = {
   declined: 'abgesagt', withdrawn: 'zurückgezogen', expired: 'verfallen', closed: 'geschlossen',
 };
 // Ergebnis des Persönlichkeitstests, vom Quiz im Browser abgelegt
-export const PROFILE_STORE = 'pfotenmatch-profile-v1';
+export const PROFILE_STORE = 'petify-profile-v1';
 
 export async function call(method, path, body, { form = false } = {}) {
-  const headers = { 'x-pfotenmatch': '1' };
+  const headers = { 'x-petify': '1' };
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   const res = await fetch(path, { method, headers, body: form ? body : body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });
   const data = res.status === 204 ? null : await res.json().catch(() => null);

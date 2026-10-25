@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pfotenmatch.example/schema/animal.json",
+  "$id": "https://petify.example/schema/animal.json",
   "title": "Tierprofil",
   "description": "Einheitliches Profil eines vermittelbaren Tieres. Charakterwerte sind Skalen von 1 (wenig) bis 5 (viel), damit Tierheime ihre Einschätzungen vergleichbar angeben.",
   "type": "object",

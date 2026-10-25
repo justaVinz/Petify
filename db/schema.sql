@@ -1,4 +1,4 @@
--- Pfotenmatch: Tierheime und ihre Tiere
+-- Petify: Tierheime und ihre Tiere
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

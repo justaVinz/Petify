@@ -1,6 +1,8 @@
-# Pfotenmatch
+# Petify
 
-Persönlichkeitstest, der passende Tiere aus Tierheimen in der Umgebung vorschlägt – und eine **einheitliche API**, über die Tierheime ihre vermittelbaren Tiere erfassen.
+Petify is an Open Source pet rehoming webapp, which allows institutions and individuals to create personality entries for the pets. We then match those personalities based of a character test to you and provide information on how to reach out to your new saved pet.
+
+**Deutsch:** Persönlichkeitstest, der passende Tiere aus Tierheimen und geprüften Privatabgaben in der Umgebung vorschlägt – und eine **einheitliche API**, über die Tierheime ihre vermittelbaren Tiere erfassen.
 
 - **Quiz** (`/`): 13 Fragen zu Persönlichkeit und Lebensumständen → Tier-Typ und die passendsten Tiere mit Charakterbogen, direkter Anfrage und Link zur Tierheimseite
 - **Tierseite** (`/tier.html?id=…`): Charakterbogen und Vermittlungsanfrage mit automatischer Vorprüfung
@@ -17,7 +19,7 @@ Stack: Node.js 22, Express, PostgreSQL, JSON-Schema-Prüfung mit Ajv.
 ## Schnellstart
 
 ```bash
-docker run -d --name pfotenmatch-db -e POSTGRES_USER=virony -e POSTGRES_PASSWORD=virony -e POSTGRES_DB=pfotenmatch -p 5432:5432 postgres:16-alpine
+docker run -d --name petify-db -e POSTGRES_USER=virony -e POSTGRES_PASSWORD=virony -e POSTGRES_DB=petify -p 5432:5432 postgres:16-alpine
 npm install
 cp .env.example .env          # ADMIN_TOKEN unbedingt ändern
 npm run db:setup              # Schema + Beispiel-Tierheime; gibt deren API-Schlüssel einmalig aus
@@ -30,7 +32,7 @@ npm test
 **Anmeldung ohne Passwort**
 - *E-Mail-Link:* 15 Minuten gültig, nur einmal nutzbar. Der Link öffnet die Seite, erst die Seite bestätigt die Anmeldung. So verbrauchen E-Mail-Scanner, die Links vorab öffnen, den Link nicht. Ohne `SMTP_URL` steht der Link im Server-Log (Entwicklung).
 - *Google:* OpenID Connect mit PKCE, nur mit bestätigter Google-Adresse. Einrichtung: in der Google Cloud Console einen OAuth-Client „Webanwendung“ anlegen, als Weiterleitungs-URI `APP_URL/auth/google/callback` eintragen, `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` setzen. Ohne diese Werte wird der Google-Button ausgeblendet.
-- Sitzungen liegen als Hash in der Datenbank; der Browser bekommt nur ein HttpOnly-Cookie (`SameSite=Lax`, bei HTTPS `Secure`). Schreibende Anfragen brauchen zusätzlich den Header `x-pfotenmatch: 1` (CSRF-Schutz).
+- Sitzungen liegen als Hash in der Datenbank; der Browser bekommt nur ein HttpOnly-Cookie (`SameSite=Lax`, bei HTTPS `Secure`). Schreibende Anfragen brauchen zusätzlich den Header `x-petify: 1` (CSRF-Schutz).
 
 **Ablauf für ein neues Tierheim**
 1. Anmelden → Tierheim eintragen (Status *in Prüfung*). Die anmeldende Person wird Admin.
@@ -71,11 +73,11 @@ Privatpersonen nutzen dasselbe Konto für Anfragen und zum Abgeben eines eigenen
 - Einmalig Postleitzahl und Ort angeben und bestätigen, dass das Tier ihnen gehört und nicht gewerblich vermittelt wird. Ein freiwilliger Standort wird auf ca. 1 km gerundet.
 - Höchstens 3 Tiere gleichzeitig, Schutzgebühr höchstens 300 €, kein Excel-Import, kein API-Schlüssel, kein Team.
 - Jede Anzeige und jede Änderung wird vor der Veröffentlichung geprüft (`/admin.html` oder `GET /v1/admin/animals?review=pending`, `POST /v1/admin/animals/{id}/review`). Ablehnungen brauchen eine Begründung, die per E-Mail an die Person geht.
-- Öffentlich erscheint der Anbieter als „Privatabgabe“ mit PLZ und Ort; Name und E-Mail-Adresse bleiben verborgen. Die Tierseite auf Pfotenmatch ersetzt den Link zur Tierheimseite.
+- Öffentlich erscheint der Anbieter als „Privatabgabe“ mit PLZ und Ort; Name und E-Mail-Adresse bleiben verborgen. Die Tierseite auf Petify ersetzt den Link zur Tierheimseite.
 
 ## Eigene Daten statt Website-Daten
 
-Pfotenmatch speichert die Tierprofile selbst; die Website des Tierheims bleibt über den Pflicht-Link die Stelle, an der vermittelt wird. Das automatische Einsammeln von Tierheim-Websites (Scraping) ist bewusst nicht vorgesehen: Texte, Fotos und Datenbanken sind rechtlich geschützt, Websites liefern keine vergleichbaren Charakterwerte, und Vermittlungen würden spät oder gar nicht erkannt.
+Petify speichert die Tierprofile selbst; die Website des Tierheims bleibt über den Pflicht-Link die Stelle, an der vermittelt wird. Das automatische Einsammeln von Tierheim-Websites (Scraping) ist bewusst nicht vorgesehen: Texte, Fotos und Datenbanken sind rechtlich geschützt, Websites liefern keine vergleichbaren Charakterwerte, und Vermittlungen würden spät oder gar nicht erkannt.
 
 ## Das einheitliche Tierprofil
 

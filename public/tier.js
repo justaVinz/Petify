@@ -19,7 +19,7 @@ async function start() {
     app.innerHTML = `<section class="portal"><h1>Tier nicht gefunden</h1><p class="muted">${esc(err.message)} Vielleicht hat es schon ein Zuhause gefunden.</p><a class="btn primary" href="/">Zum Persönlichkeitstest</a></section>`;
     return;
   }
-  document.title = `${a.name} · Pfotenmatch`;
+  document.title = `${a.name} · Petify`;
   const comp = a.compatibility;
   const kids = comp.children === 'from_age' ? `ab ${comp.childrenMinAge} Jahren` : COMPAT[comp.children];
   const isPrivate = a.shelter.kind === 'private';
@@ -38,7 +38,7 @@ async function start() {
         <div class="scale"><span>Braucht Routine</span>${pips(a.character.routineNeed)}</div>
         <div class="scale"><span>Verspielt</span>${pips(a.character.playfulness)}</div>
       </div>
-      ${a.assessment?.method === 'questionnaire' ? '<p class="muted">Eingeschätzt mit dem Pfotenmatch-Verhaltensfragebogen.</p>' : ''}
+      ${a.assessment?.method === 'questionnaire' ? '<p class="muted">Eingeschätzt mit dem Petify-Verhaltensfragebogen.</p>' : ''}
       <p class="about">${esc(a.description)}</p>
       ${a.idealHome ? `<p class="about"><strong>Wunsch-Zuhause:</strong> ${esc(a.idealHome)}</p>` : ''}
       <dl class="form">

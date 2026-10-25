@@ -63,12 +63,12 @@ export async function sendMail({ to, subject, text, link }) {
     return;
   }
   const transport = nodemailer.createTransport(process.env.SMTP_URL);
-  await transport.sendMail({ from: process.env.MAIL_FROM ?? 'Pfotenmatch <login@pfotenmatch.example>', to, subject, text });
+  await transport.sendMail({ from: process.env.MAIL_FROM ?? 'Petify <login@petify.example>', to, subject, text });
 }
 
 function sendLoginMail(email, link) {
-  const text = `Hallo,\n\nmit diesem Link meldest du dich bei Pfotenmatch an:\n${link}\n\nDer Link ist ${LINK_MINUTES} Minuten gültig und funktioniert nur einmal.\nWenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren.`;
-  return sendMail({ to: email, subject: 'Dein Anmelde-Link für Pfotenmatch', text, link });
+  const text = `Hallo,\n\nmit diesem Link meldest du dich bei Petify an:\n${link}\n\nDer Link ist ${LINK_MINUTES} Minuten gültig und funktioniert nur einmal.\nWenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren.`;
+  return sendMail({ to: email, subject: 'Dein Anmelde-Link für Petify', text, link });
 }
 
 async function startSession(res, userId) {
@@ -103,7 +103,7 @@ export async function loadUser(req, _res, next) {
 export function requireUser(req, _res, next) {
   if (!req.user) return next(new HttpError(401, 'login_required', 'Bitte melde dich an.'));
   // CSRF-Schutz: schreibende Anfragen müssen von unserer eigenen Seite kommen
-  if (!['GET', 'HEAD'].includes(req.method) && req.get('x-pfotenmatch') !== '1') {
+  if (!['GET', 'HEAD'].includes(req.method) && req.get('x-petify') !== '1') {
     return next(new HttpError(403, 'csrf', 'Anfrage nicht erlaubt.'));
   }
   next();
@@ -143,7 +143,7 @@ export function authRouter() {
 
   r.post('/email/confirm', async (req, res, next) => {
     try {
-      if (req.get('x-pfotenmatch') !== '1') throw new HttpError(403, 'csrf', 'Anfrage nicht erlaubt.');
+      if (req.get('x-petify') !== '1') throw new HttpError(403, 'csrf', 'Anfrage nicht erlaubt.');
       const t = String(req.body?.token ?? '');
       const { rows: [row] } = await pool.query(`UPDATE login_tokens SET used_at = now()
         WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING email`, [sha256(t)]);

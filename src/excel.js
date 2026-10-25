@@ -53,7 +53,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export async function buildTemplate() {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Pfotenmatch';
+  wb.creator = 'Petify';
   const ws = wb.addWorksheet('Tiere', { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
   ws.columns = COLUMNS.map((c) => ({ header: c.required ? `${c.header} *` : c.header, width: c.width }));
   const head = ws.getRow(1);

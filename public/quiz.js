@@ -21,7 +21,7 @@ const SPECIES = { dog: ['Hund', '🐕'], cat: ['Katze', '🐈'], rabbit: ['Kanin
 const SEX = { male: 'männlich', female: 'weiblich', mixed: 'gemischt', unknown: 'unbekannt' };
 const COMPAT = { yes: 'ja', no: 'nein', unknown: 'unbekannt' };
 
-const STORE = 'pfotenmatch-app-v1';
+const STORE = 'petify-app-v1';
 const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch { return null; } };
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* privater Modus */ } };
 let state = load() || { step: 'intro', plz: '', radius: 25, coords: null, answers: {}, index: 0 };
@@ -157,7 +157,7 @@ async function renderResult() {
   app.innerHTML = '<section class="wrap loading" aria-busy="true">Suche passende Tiere …</section>';
   const p = profile(state.answers);
   // Für Anfragen: Konto- und Tierseite übernehmen das Profil nach der Anmeldung
-  try { localStorage.setItem('pfotenmatch-profile-v1', JSON.stringify(p)); } catch { /* privater Modus */ }
+  try { localStorage.setItem('petify-profile-v1', JSON.stringify(p)); } catch { /* privater Modus */ }
   const location = state.coords ? { lat: state.coords.lat, lng: state.coords.lng, radiusKm: state.radius } : { postalCode: state.plz, radiusKm: state.radius };
   let data;
   try {

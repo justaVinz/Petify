@@ -3,6 +3,7 @@
 ## [Unveröffentlicht] – Konten für Privatpersonen, Anfragen mit Vorprüfung, Fragebogen
 
 ### Neu
+- Projekt heißt jetzt **Petify** (vorher Pfotenmatch). Umbenannt sind auch Cookie- und Header-Namen (`x-petify`), Browser-Speicher und der Datenbankname in `.env.example`.
 - **Persönliches Konto** (`/konto.html`): Anmeldung per E-Mail-Link oder Google auch für Privatpersonen. Übersicht der eigenen Anfragen mit Status, Wartelistenplatz und – nach Zusage – Kontaktdaten; Anfragen zurückziehen; Persönlichkeitsprofil und Anzeigename.
 - **Vermittlungsanfragen** über die neue Tierseite `/tier.html?id=…` und den Button „Anfrage stellen“ im Quiz-Ergebnis:
   - Voraussetzungen: Persönlichkeitstest, Nachricht (80–2000 Zeichen), zwei Bestätigungen
@@ -29,7 +30,7 @@
   - `animals` um `review_status` und `review_note` erweitert
   - neue Tabellen `user_profiles` und `adoption_requests`
   - Migration über `npm run db:setup`
-- `url` im Tierprofil ist im Schema optional; für Tierheime bleibt der Link zur Tierseite Pflicht (API, Formular, Excel). Ohne Link verweist `url` auf die Pfotenmatch-Tierseite.
+- `url` im Tierprofil ist im Schema optional; für Tierheime bleibt der Link zur Tierseite Pflicht (API, Formular, Excel). Ohne Link verweist `url` auf die Petify-Tierseite.
 - Öffentliche Suche, Matching und Tierheimliste zeigen nur freigeschaltete Anbieter und geprüfte Tiere. `/v1/shelters` listet nur Tierheime.
 - Excel-Import, Team-Verwaltung und API-Schlüssel sind Tierheimen vorbehalten.
 - Gemeinsame Browser-Helfer in `public/common.js`.

@@ -2,7 +2,7 @@
 import { esc, errorHtml, showMsg, date, SPECIES, EMOJI } from '/common.js';
 
 const app = document.getElementById('app');
-const KEY = 'pfotenmatch-admin';
+const KEY = 'petify-admin';
 let token = (() => { try { return sessionStorage.getItem(KEY) ?? ''; } catch { return ''; } })();
 
 async function api(method, path, body) {

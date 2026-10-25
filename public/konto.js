@@ -16,7 +16,7 @@ async function start() {
   } catch (err) {
     if (err.status === 401) {
       return loginForm(app, {
-        title: 'Dein Pfotenmatch-Konto', next: 'konto', notice,
+        title: 'Dein Petify-Konto', next: 'konto', notice,
         intro: 'Mit deinem Konto stellst du Anfragen für Tiere, die zu dir passen, und siehst ihren Stand. Du kannst auch selbst ein Tier zur Vermittlung anbieten. Kein Passwort nötig: Wir schicken dir einen Anmelde-Link.',
       });
     }

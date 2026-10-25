@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const uploads = mkdtempSync(join(tmpdir(), 'pfotenmatch-'));
+const uploads = mkdtempSync(join(tmpdir(), 'petify-'));
 process.env.UPLOAD_DIR = uploads;
 process.env.ADMIN_TOKEN = 'test-admin-token-123';
 process.env.APP_URL = 'http://localhost';
@@ -44,7 +44,7 @@ const cookieOf = (res) => (res.headers.getSetCookie?.() ?? []).map((c) => c.spli
 function client(cookie = '') {
   return async (method, path, body, { form = false, csrf = true } = {}) => {
     const headers = { cookie };
-    if (csrf) headers['x-pfotenmatch'] = '1';
+    if (csrf) headers['x-petify'] = '1';
     if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
     const res = await fetch(base + path, { method, headers, body: form ? body : body === undefined ? undefined : JSON.stringify(body), redirect: 'manual' });
     const text = await res.text();
