@@ -2,10 +2,15 @@
 
 Persönlichkeitstest, der passende Tiere aus Tierheimen in der Umgebung vorschlägt – und eine **einheitliche API**, über die Tierheime ihre vermittelbaren Tiere erfassen.
 
-- **Quiz** (`/`): 13 Fragen zu Persönlichkeit und Lebensumständen → Tier-Typ und die passendsten Tiere mit Charakterbogen und Link zur Tierheimseite
+- **Quiz** (`/`): 13 Fragen zu Persönlichkeit und Lebensumständen → Tier-Typ und die passendsten Tiere mit Charakterbogen, direkter Anfrage und Link zur Tierheimseite
+- **Tierseite** (`/tier.html?id=…`): Charakterbogen und Vermittlungsanfrage mit automatischer Vorprüfung
+- **Konto** (`/konto.html`): Privatpersonen sehen ihre Anfragen und ihr Profil – und können selbst ein Tier zur Vermittlung anbieten (moderiert)
+- **Verwaltung** (`/verwaltung.html`): Tierheime melden sich per E-Mail-Link oder Google an, tragen Tiere per Excel, Formular oder Fragebogen ein, beantworten Anfragen im Postfach
+- **Moderation** (`/admin.html`): neue Tierheime freischalten, private Anzeigen prüfen (Zugang mit `ADMIN_TOKEN`)
 - **API** (`/v1/…`): Tierheime legen Tiere im einheitlichen Format an; öffentliche Suche und Matching
-- **Verwaltung** (`/verwaltung.html`): Tierheime melden sich per E-Mail-Link oder Google an, importieren Tiere per Excel mit Fotos und pflegen den Status
 - **Doku** (`/docs.html`): interaktive OpenAPI-Dokumentation, Spezifikation unter `/openapi.json`
+
+Änderungen stehen im [CHANGELOG](CHANGELOG.md). Lizenz: [MIT](LICENSE).
 
 Stack: Node.js 22, Express, PostgreSQL, JSON-Schema-Prüfung mit Ajv.
 
@@ -40,6 +45,33 @@ npm test
 - Fotos werden zusammen mit der Datei hochgeladen; in der Spalte „Fotos“ stehen die Dateinamen (Groß-/Kleinschreibung egal) oder https-Links.
 
 **Fotos**: JPG, PNG oder WebP bis 12 MB, höchstens 12 pro Tier. Der Inhalt wird geprüft, das Bild gedreht (EXIF), auf 1600 px verkleinert, als WebP gespeichert und um Metadaten wie GPS-Koordinaten bereinigt. Dazu ein quadratisches Vorschaubild (480 px). Ablage in `UPLOAD_DIR`, ausgeliefert unter `/media/…`. Für den Echtbetrieb sollte die Ablage auf einen Objektspeicher (z. B. S3-kompatibel) wechseln.
+
+**Einzelne Tiere** tragt ihr im Formular ein (Tab *Tiere* → *Tier eintragen*). Charakter und Anforderungen entstehen dort wahlweise
+
+- aus dem **Verhaltensfragebogen** (empfohlen): 10 Fragen zu beobachtbarem Verhalten („Wie reagiert es auf fremde Menschen?“), die in die Skalen des Tierprofils umgerechnet werden – so sind Einstufungen verschiedener Anbieter vergleichbar. Die Antworten werden in `assessment.answers` gespeichert, die Umrechnung steht in [`src/questionnaire.js`](src/questionnaire.js) und wird auch im Browser genutzt (Live-Vorschau). Über die API: `GET /v1/questionnaire`, `POST /v1/questionnaire/score` oder `assessment: { method: "questionnaire", answers }` beim Anlegen; fehlende Werte werden ergänzt, Handeingaben haben Vorrang.
+- oder **von Hand** über Schieberegler (1–5).
+
+## Vermittlungsanfragen mit Vorprüfung
+
+Damit Tierheime und Privatpersonen nicht mit unpassenden oder zu vielen Anfragen überlastet werden, läuft jede Anfrage durch mehrere Stufen ([`src/requests.js`](src/requests.js)):
+
+1. **Voraussetzungen:** Anmeldung, Persönlichkeitstest (das Profil wird aus dem Browser übernommen), Nachricht mit 80–2000 Zeichen, zwei Bestätigungen (ernst gemeint, Kontakt erlaubt). Keine Anfragen für eigene Tiere.
+2. **Grenzen je Person:** höchstens 3 offene Anfragen gleichzeitig, 5 pro Woche, eine pro Tier.
+3. **Vorprüfung:** Ausschlussgründe (Allergie + Fell, Wohnsituation, Zeitbedarf, Kinder, andere Tiere) oder eine Passung unter 55 % führen zur automatischen Absage mit Begründung. Der Anbieter sieht diese Anfragen nie.
+4. **Kapazität je Anbieter:** pro Tier höchstens *N* Anfragen gleichzeitig beim Anbieter (Standard 5, privat 3), pro Tag höchstens *M* neue (Standard 25, privat 10). Einstellbar im Postfach. Darüber hinaus kommt die Anfrage auf die **Warteliste**, sortiert nach Passung.
+5. **Nachrücken:** Bei Absage, Rückzug, höheren Grenzen oder wenn eine Anfrage nach 14 Tagen ohne Antwort verfällt, rückt die beste Anfrage der Warteliste nach.
+6. **Datensparsam:** Im Postfach sehen Anbieter Profil, Nachricht, Passung und Vornamen. E-Mail-Adressen werden erst nach *Kennenlernen vorschlagen* gegenseitig sichtbar. Wird ein Tier reserviert oder vermittelt, werden offene Anfragen geschlossen und die Personen benachrichtigt.
+
+Alle Beteiligten werden per E-Mail informiert (neue Anfrage, nachgerückt, Zusage, Absage mit Begründung).
+
+## Private Abgabe
+
+Privatpersonen nutzen dasselbe Konto für Anfragen und zum Abgeben eines eigenen Tieres:
+
+- Einmalig Postleitzahl und Ort angeben und bestätigen, dass das Tier ihnen gehört und nicht gewerblich vermittelt wird. Ein freiwilliger Standort wird auf ca. 1 km gerundet.
+- Höchstens 3 Tiere gleichzeitig, Schutzgebühr höchstens 300 €, kein Excel-Import, kein API-Schlüssel, kein Team.
+- Jede Anzeige und jede Änderung wird vor der Veröffentlichung geprüft (`/admin.html` oder `GET /v1/admin/animals?review=pending`, `POST /v1/admin/animals/{id}/review`). Ablehnungen brauchen eine Begründung, die per E-Mail an die Person geht.
+- Öffentlich erscheint der Anbieter als „Privatabgabe“ mit PLZ und Ort; Name und E-Mail-Adresse bleiben verborgen. Die Tierseite auf Pfotenmatch ersetzt den Link zur Tierheimseite.
 
 ## Eigene Daten statt Website-Daten
 
@@ -97,6 +129,12 @@ Fehler kommen einheitlich als `{ "error": { "code", "message", "details": [...] 
 | POST | `/v1/animals/import` | Tierheim | Sammelimport (max. 500) |
 | POST | `/v1/shelters` | Verwaltung | Tierheim anlegen, gibt API-Schlüssel einmalig aus |
 | POST | `/v1/shelters/{id}/rotate-key` | Verwaltung | neuen Schlüssel ausstellen |
+| GET | `/v1/questionnaire` | öffentlich | Fragen des Verhaltensfragebogens |
+| POST | `/v1/questionnaire/score` | öffentlich | Antworten → Skalen und Anforderungen |
+| GET | `/v1/admin/shelters`, `/v1/admin/animals` | Verwaltung | offene Freischaltungen und Anzeigen |
+| POST | `/v1/admin/shelters/{id}/status`, `/v1/admin/animals/{id}/review` | Verwaltung | freischalten, sperren, Anzeige freigeben/ablehnen |
+
+Der Bereich für angemeldete Personen (`/portal/api/…`, Sitzungs-Cookie) ist für die eigenen Seiten gedacht, nicht als öffentliche API: Profil (`PUT /me/profile`), Anfragen (`POST /requests`, `GET /me/requests`, `POST /requests/{id}/withdraw`), private Abgabe (`POST /private`), Tiere (`POST|GET|PUT /shelters/{sid}/animals/…`), Postfach (`GET /shelters/{sid}/requests`, `POST …/requests/{rid}/decision`, `PATCH /shelters/{sid}/settings`).
 
 ## Umkreis
 
@@ -105,4 +143,4 @@ Mit Koordinaten (`lat`/`lng`, z. B. aus der Standortfreigabe im Browser) wird pe
 ## Stand des Prototyps
 
 - Beispiel-Tierheime und -Tiere in `db/examples.json` sind erfunden (`isExample: true`, Links auf `.example`).
-- Noch offen für den Echtbetrieb: Rate-Limiting für die öffentliche API (der Login-Versand ist begrenzt, aber nur im Arbeitsspeicher), Objektspeicher für Fotos, Datenschutzerklärung und Auftragsverarbeitung (Mailversand, Hosting), Oberfläche für die Freischaltung, Einzelbearbeitung von Tieren im Formular, PLZ-Geocoding, Benachrichtigung bei Statuswechsel (Webhooks).
+- Noch offen für den Echtbetrieb: Rate-Limiting für die öffentliche API (der Login-Versand ist begrenzt, aber nur im Arbeitsspeicher), Objektspeicher für Fotos, Datenschutzerklärung und Auftragsverarbeitung (Mailversand, Hosting, Speicherdauer von Anfragen), PLZ-Geocoding, Benachrichtigung bei Statuswechsel (Webhooks), Verfallen von Anfragen per Zeitplan statt beim Seitenaufruf, Melde-Funktion für verdächtige Anzeigen.

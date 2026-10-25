@@ -221,6 +221,8 @@ export async function parseWorkbook(buffer) {
     if (doc.externalId && seen.has(doc.externalId)) errors.push(`Karteinummer: „${doc.externalId}“ kommt schon in Zeile ${seen.get(doc.externalId)} vor`);
     if (doc.externalId) seen.set(doc.externalId, rowNumber);
     // Alle Fehler einer Zeile auf einmal melden; Spalten mit Umwandlungsfehler nicht doppelt
+    if (!doc.url && !errors.some((e) => e.startsWith('Link zur Tierseite'))) errors.push('Link zur Tierseite: Pflichtfeld fehlt');
+    doc.assessment = { method: 'import' };
     const v = validateAnimal(doc);
     if (!v.ok) {
       const already = new Set(errors.map((e) => e.split(':')[0]));

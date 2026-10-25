@@ -58,7 +58,7 @@ async function login(email) {
   const anon = client();
   const start = await anon('POST', '/auth/email/start', { email });
   assert.equal(start.status, 200);
-  const link = mails.findLast((m) => m.to === email).link;
+  const link = mails.findLast((m) => m.to === email && m.link).link;
   const verify = await fetch(link.replace('http://localhost', base), { redirect: 'manual' });
   assert.equal(verify.status, 302);
   const token = new URL(verify.headers.get('location'), base).searchParams.get('anmelden');

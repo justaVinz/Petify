@@ -5,85 +5,349 @@
   "description": "Einheitliches Profil eines vermittelbaren Tieres. Charakterwerte sind Skalen von 1 (wenig) bis 5 (viel), damit Tierheime ihre Einschätzungen vergleichbar angeben.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["externalId", "status", "name", "species", "sex", "character", "requirements", "compatibility", "hasFur", "description", "url"],
+  "required": [
+    "externalId",
+    "status",
+    "name",
+    "species",
+    "sex",
+    "character",
+    "requirements",
+    "compatibility",
+    "hasFur",
+    "description"
+  ],
   "properties": {
-    "externalId": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Eigene Nummer des Tierheims, z. B. die Karteinummer. Pro Tierheim eindeutig." },
-    "status": { "enum": ["available", "reserved", "adopted", "not_available"], "description": "available = vermittelbar, reserved = reserviert, adopted = vermittelt, not_available = vorübergehend nicht vermittelbar" },
-    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-    "species": { "enum": ["dog", "cat", "rabbit", "guinea_pig", "rodent", "bird", "reptile", "fish", "horse", "other"] },
-    "breed": { "type": "string", "maxLength": 120, "description": "Rasse oder Mischling, z. B. „Labrador-Mischling“" },
-    "sex": { "enum": ["male", "female", "mixed", "unknown"], "description": "mixed für Gruppen mit beiden Geschlechtern" },
-    "neutered": { "type": ["boolean", "null"] },
+    "externalId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Eigene Nummer des Tierheims, z. B. die Karteinummer. Pro Tierheim eindeutig."
+    },
+    "status": {
+      "enum": [
+        "available",
+        "reserved",
+        "adopted",
+        "not_available"
+      ],
+      "description": "available = vermittelbar, reserved = reserviert, adopted = vermittelt, not_available = vorübergehend nicht vermittelbar"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "species": {
+      "enum": [
+        "dog",
+        "cat",
+        "rabbit",
+        "guinea_pig",
+        "rodent",
+        "bird",
+        "reptile",
+        "fish",
+        "horse",
+        "other"
+      ]
+    },
+    "breed": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "Rasse oder Mischling, z. B. „Labrador-Mischling“"
+    },
+    "sex": {
+      "enum": [
+        "male",
+        "female",
+        "mixed",
+        "unknown"
+      ],
+      "description": "mixed für Gruppen mit beiden Geschlechtern"
+    },
+    "neutered": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "age": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "description": "Entweder Geburtsdatum (auch nur Jahr oder Jahr-Monat) oder geschätztes Alter in Jahren",
       "properties": {
-        "birthDate": { "type": "string", "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$" },
-        "estimatedYears": { "type": "number", "minimum": 0, "maximum": 120 }
+        "birthDate": {
+          "type": "string",
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$"
+        },
+        "estimatedYears": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 120
+        }
       },
       "minProperties": 1
     },
-    "intakeDate": { "type": "string", "format": "date", "description": "Seit wann das Tier im Tierheim ist" },
-    "groupSize": { "type": "integer", "minimum": 1, "maximum": 20, "default": 1, "description": "Anzahl Tiere, die nur zusammen vermittelt werden" },
+    "intakeDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Seit wann das Tier im Tierheim ist"
+    },
+    "groupSize": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 1,
+      "description": "Anzahl Tiere, die nur zusammen vermittelt werden"
+    },
     "character": {
-      "type": "object", "additionalProperties": false,
-      "required": ["activity", "affection", "anxiety", "noiseTolerance", "routineNeed", "playfulness"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activity",
+        "affection",
+        "anxiety",
+        "noiseTolerance",
+        "routineNeed",
+        "playfulness"
+      ],
       "properties": {
-        "activity": { "$ref": "#/$defs/scale", "description": "Bewegungsdrang" },
-        "affection": { "$ref": "#/$defs/scale", "description": "Verschmustheit, Bedürfnis nach Nähe" },
-        "anxiety": { "$ref": "#/$defs/scale", "description": "Ängstlichkeit – hohe Werte brauchen geduldige Menschen" },
-        "noiseTolerance": { "$ref": "#/$defs/scale", "description": "Wie gut das Tier mit Trubel, Besuch und Lärm umgeht" },
-        "routineNeed": { "$ref": "#/$defs/scale", "description": "Wie sehr das Tier feste Abläufe braucht" },
-        "playfulness": { "$ref": "#/$defs/scale", "description": "Verspieltheit und Lernfreude" }
+        "activity": {
+          "$ref": "#/$defs/scale",
+          "description": "Bewegungsdrang"
+        },
+        "affection": {
+          "$ref": "#/$defs/scale",
+          "description": "Verschmustheit, Bedürfnis nach Nähe"
+        },
+        "anxiety": {
+          "$ref": "#/$defs/scale",
+          "description": "Ängstlichkeit – hohe Werte brauchen geduldige Menschen"
+        },
+        "noiseTolerance": {
+          "$ref": "#/$defs/scale",
+          "description": "Wie gut das Tier mit Trubel, Besuch und Lärm umgeht"
+        },
+        "routineNeed": {
+          "$ref": "#/$defs/scale",
+          "description": "Wie sehr das Tier feste Abläufe braucht"
+        },
+        "playfulness": {
+          "$ref": "#/$defs/scale",
+          "description": "Verspieltheit und Lernfreude"
+        }
       }
     },
     "requirements": {
-      "type": "object", "additionalProperties": false,
-      "required": ["space", "experience", "timeNeed"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "space",
+        "experience",
+        "timeNeed"
+      ],
       "properties": {
-        "space": { "enum": ["apartment", "balcony", "garden"], "description": "Mindestens nötige Wohnsituation" },
-        "experience": { "enum": ["beginner", "some", "experienced"], "description": "Nötige Erfahrung der neuen Menschen" },
-        "timeNeed": { "$ref": "#/$defs/scale", "description": "Wie viel Anwesenheit und Beschäftigung das Tier braucht" },
-        "maxHoursAlone": { "type": ["number", "null"], "minimum": 0, "maximum": 24 },
-        "outdoorAccess": { "type": "boolean", "description": "Braucht Freigang bzw. Außengehege" }
+        "space": {
+          "enum": [
+            "apartment",
+            "balcony",
+            "garden"
+          ],
+          "description": "Mindestens nötige Wohnsituation"
+        },
+        "experience": {
+          "enum": [
+            "beginner",
+            "some",
+            "experienced"
+          ],
+          "description": "Nötige Erfahrung der neuen Menschen"
+        },
+        "timeNeed": {
+          "$ref": "#/$defs/scale",
+          "description": "Wie viel Anwesenheit und Beschäftigung das Tier braucht"
+        },
+        "maxHoursAlone": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 24
+        },
+        "outdoorAccess": {
+          "type": "boolean",
+          "description": "Braucht Freigang bzw. Außengehege"
+        }
       }
     },
     "compatibility": {
-      "type": "object", "additionalProperties": false,
-      "required": ["children", "dogs", "cats", "smallAnimals"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "children",
+        "dogs",
+        "cats",
+        "smallAnimals"
+      ],
       "properties": {
-        "children": { "enum": ["yes", "no", "from_age", "unknown"] },
-        "childrenMinAge": { "type": "integer", "minimum": 0, "maximum": 18, "description": "Nur bei children = from_age" },
-        "dogs": { "$ref": "#/$defs/compat" },
-        "cats": { "$ref": "#/$defs/compat" },
-        "smallAnimals": { "$ref": "#/$defs/compat" }
+        "children": {
+          "enum": [
+            "yes",
+            "no",
+            "from_age",
+            "unknown"
+          ]
+        },
+        "childrenMinAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18,
+          "description": "Nur bei children = from_age"
+        },
+        "dogs": {
+          "$ref": "#/$defs/compat"
+        },
+        "cats": {
+          "$ref": "#/$defs/compat"
+        },
+        "smallAnimals": {
+          "$ref": "#/$defs/compat"
+        }
       }
     },
-    "hasFur": { "type": "boolean", "description": "Relevant für Menschen mit Tierhaarallergie" },
+    "hasFur": {
+      "type": "boolean",
+      "description": "Relevant für Menschen mit Tierhaarallergie"
+    },
     "health": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "notes": { "type": "string", "maxLength": 1000 },
-        "chronicConditions": { "type": "array", "items": { "type": "string", "maxLength": 120 }, "maxItems": 20 },
-        "specialDiet": { "type": "boolean" },
-        "vaccinated": { "type": "boolean" },
-        "microchipped": { "type": "boolean" }
+        "notes": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "chronicConditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "maxItems": 20
+        },
+        "specialDiet": {
+          "type": "boolean"
+        },
+        "vaccinated": {
+          "type": "boolean"
+        },
+        "microchipped": {
+          "type": "boolean"
+        }
       }
     },
-    "description": { "type": "string", "minLength": 20, "maxLength": 3000, "description": "Freitext über das Tier" },
-    "idealHome": { "type": "string", "maxLength": 1000, "description": "Wunsch-Zuhause in eigenen Worten" },
-    "photos": {
-      "type": "array", "maxItems": 20,
-      "items": { "type": "object", "additionalProperties": false, "required": ["url"], "properties": { "url": { "type": "string", "format": "uri", "pattern": "^https://" }, "alt": { "type": "string", "maxLength": 200 } } }
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 3000,
+      "description": "Freitext über das Tier"
     },
-    "url": { "type": "string", "format": "uri", "pattern": "^https?://", "description": "Link zum Tierprofil auf der Website des Tierheims" },
+    "idealHome": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Wunsch-Zuhause in eigenen Worten"
+    },
+    "photos": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "alt": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "description": "Link zum Tierprofil auf der Website des Tierheims. Pflicht für Tierheime, bei privater Abgabe leer."
+    },
     "adoptionFee": {
-      "type": "object", "additionalProperties": false, "required": ["amount", "currency"],
-      "properties": { "amount": { "type": "number", "minimum": 0 }, "currency": { "const": "EUR" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "currency": {
+          "const": "EUR"
+        }
+      }
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method"
+      ],
+      "description": "Wie die Charakterwerte entstanden sind – Fragebogen, Handeingabe oder Import",
+      "properties": {
+        "method": {
+          "enum": [
+            "questionnaire",
+            "manual",
+            "import",
+            "api"
+          ]
+        },
+        "answers": {
+          "type": "object",
+          "description": "Antworten des Charakter-Fragebogens (Frage-ID → Antwortnummer)",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "assessedAt": {
+          "type": "string",
+          "format": "date"
+        }
+      }
     }
   },
   "$defs": {
-    "scale": { "type": "integer", "minimum": 1, "maximum": 5 },
-    "compat": { "enum": ["yes", "no", "unknown"] }
+    "scale": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "compat": {
+      "enum": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    }
   }
 }

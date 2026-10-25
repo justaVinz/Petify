@@ -5,7 +5,11 @@ import { validateAnimal, animalSchema } from './validate.js';
 import { matchAnimal, haversineKm } from './matching.js';
 import { requireShelter, requireAdmin, newApiKey, hashKey, HttpError } from './auth.js';
 import { openapi } from './openapi.js';
-import { ANIMAL_SELECT, animalOut, readAnimal, createAnimal, replaceAnimal, setStatus, deleteAnimal, upsertAnimal } from './animals.js';
+import { ANIMAL_SELECT, PUBLIC_WHERE, animalOut, readAnimal, createAnimal, replaceAnimal, setStatus, deleteAnimal, upsertAnimal } from './animals.js';
+import { profileSchema } from './profile.js';
+import { QUESTIONS, scoreQuestionnaire } from './questionnaire.js';
+import { sendMail } from './accounts.js';
+import { fileURLToPath } from 'node:url';
 import { authRouter, loadUser } from './accounts.js';
 import { portalRouter } from './portal.js';
 import { uploadDir } from './media.js';
@@ -14,7 +18,6 @@ const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
 const ajv = new Ajv2020({ allErrors: true, useDefaults: true });
-const unit = { type: 'number', minimum: 0, maximum: 1 };
 const checkMatch = ajv.compile({
   type: 'object', additionalProperties: false, required: ['profile'],
   properties: {
@@ -25,19 +28,7 @@ const checkMatch = ajv.compile({
         postalCode: { type: 'string', pattern: '^\\d{5}$' }, radiusKm: { type: 'number', minimum: 1, maximum: 500, default: 25 },
       },
     },
-    profile: {
-      type: 'object', additionalProperties: false,
-      required: ['activity', 'affection', 'patience', 'busyHome', 'routine', 'curiosity', 'space', 'timeAtHome', 'experience', 'children', 'allergy'],
-      properties: {
-        activity: unit, affection: unit, patience: unit, busyHome: unit, routine: unit, curiosity: unit,
-        space: { enum: ['apartment', 'balcony', 'garden'] },
-        timeAtHome: { enum: ['low', 'medium', 'high'] },
-        experience: { enum: ['beginner', 'some', 'experienced'] },
-        children: { type: 'boolean' },
-        otherPets: { type: 'array', items: { enum: ['dog', 'cat', 'smallAnimal'] }, uniqueItems: true },
-        allergy: { type: 'boolean' },
-      },
-    },
+    profile: profileSchema,
     species: { type: 'array', items: { enum: animalSchema.properties.species.enum } },
     limit: { type: 'integer', minimum: 1, maximum: 50, default: 3 },
   },
@@ -104,12 +95,12 @@ export function createApp({ staticDir } = {}) {
   // --- öffentlich ---
   v1.get('/shelters', asyncRoute(async (_req, res) => {
     const { rows } = await pool.query(`SELECT s.*, count(a.id) FILTER (WHERE a.status = 'available')::int AS available
-      FROM shelters s LEFT JOIN animals a ON a.shelter_id = s.id WHERE s.status = 'active' GROUP BY s.id ORDER BY s.name`);
+      FROM shelters s LEFT JOIN animals a ON a.shelter_id = s.id AND a.review_status = 'approved' WHERE s.status = 'active' AND s.kind = 'shelter' GROUP BY s.id ORDER BY s.name`);
     res.json({ shelters: rows.map((s) => ({ ...shelterPublic(s), availableAnimals: s.available })) });
   }));
 
   v1.get('/shelters/:id', asyncRoute(async (req, res) => {
-    const { rows: [s] } = isUuid(req.params.id) ? await pool.query("SELECT * FROM shelters WHERE id = $1 AND status = 'active'", [req.params.id]) : { rows: [] };
+    const { rows: [s] } = isUuid(req.params.id) ? await pool.query("SELECT * FROM shelters WHERE id = $1 AND status = 'active' AND kind = 'shelter'", [req.params.id]) : { rows: [] };
     if (!s) throw new HttpError(404, 'not_found', 'Tierheim nicht gefunden.');
     res.json(shelterPublic(s));
   }));
@@ -118,7 +109,7 @@ export function createApp({ staticDir } = {}) {
     const status = req.query.status ?? 'available';
     if (!animalSchema.properties.status.enum.includes(status)) throw new HttpError(400, 'invalid_status', 'Unbekannter Status.');
     const params = [status];
-    let where = "a.status = $1 AND s.status = 'active'";
+    let where = `a.status = $1 AND ${PUBLIC_WHERE}`;
     if (req.query.species) {
       params.push(String(req.query.species).split(','));
       where += ` AND a.species = ANY($${params.length})`;
@@ -132,7 +123,7 @@ export function createApp({ staticDir } = {}) {
 
   v1.get('/animals/:id', asyncRoute(async (req, res) => {
     const row = isUuid(req.params.id) ? await readAnimal(req.params.id) : null;
-    if (!row || row.shelter_status !== 'active') throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
+    if (!row || row.shelter_status !== 'active' || row.review_status !== 'approved') throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
     res.json(animalOut(row));
   }));
 
@@ -141,7 +132,7 @@ export function createApp({ staticDir } = {}) {
     const body = structuredClone(req.body ?? {});
     if (!checkMatch(body)) throw new HttpError(400, 'invalid_profile', 'Profil unvollständig oder ungültig.', checkMatch.errors.map((e) => `${e.instancePath || '(body)'} ${e.message}`));
     const params = ['available'];
-    let where = "a.status = $1 AND s.status = 'active'";
+    let where = `a.status = $1 AND ${PUBLIC_WHERE}`;
     if (body.species?.length) { params.push(body.species); where += ' AND a.species = ANY($2)'; }
     const { rows } = await pool.query(`${ANIMAL_SELECT} WHERE ${where}`, params);
     const located = locate(rows, body.location);
@@ -164,12 +155,12 @@ export function createApp({ staticDir } = {}) {
   }));
 
   v1.post('/animals', requireShelter, asyncRoute(async (req, res) => {
-    const row = await createAnimal(req.shelter.id, req.body);
+    const row = await createAnimal(req.shelter, req.body);
     res.status(201).location(`/v1/animals/${row.id}`).json(animalOut(row));
   }));
 
   v1.put('/animals/:id', requireShelter, asyncRoute(async (req, res) => {
-    res.json(animalOut(await replaceAnimal(req.shelter.id, req.params.id, req.body)));
+    res.json(animalOut(await replaceAnimal(req.shelter, req.params.id, req.body)));
   }));
 
   v1.patch('/animals/:id/status', requireShelter, asyncRoute(async (req, res) => {
@@ -188,6 +179,7 @@ export function createApp({ staticDir } = {}) {
     const results = [];
     for (const [index, item] of list.entries()) {
       const v = validateAnimal(item);
+      if (v.ok && !v.value.url) { v.ok = false; v.errors = ['url: Pflichtfeld für Tierheime']; }
       if (!v.ok) { results.push({ index, externalId: item?.externalId ?? null, result: 'invalid', errors: v.errors }); continue; }
       const d = v.value;
       const row = await upsertAnimal(req.shelter.id, d);
@@ -222,6 +214,33 @@ export function createApp({ staticDir } = {}) {
     res.json({ apiKey });
   }));
 
+  // Charakter-Fragebogen: Fragen abrufen und Antworten in Skalen umrechnen
+  v1.get('/questionnaire', (_req, res) => res.json({ questions: QUESTIONS }));
+  v1.post('/questionnaire/score', (req, res) => res.json(scoreQuestionnaire(req.body?.answers ?? {})));
+
+  // Moderation privater Anzeigen
+  v1.get('/admin/animals', requireAdmin, asyncRoute(async (req, res) => {
+    const review = ['pending', 'approved', 'rejected'].includes(req.query.review) ? req.query.review : 'pending';
+    const { rows } = await pool.query(`${ANIMAL_SELECT} WHERE a.review_status = $1 ORDER BY a.updated_at`, [review]);
+    res.json({ animals: rows.map((r) => animalOut(r)) });
+  }));
+
+  v1.post('/admin/animals/:id/review', requireAdmin, asyncRoute(async (req, res) => {
+    const { status, note } = req.body ?? {};
+    if (!['approved', 'rejected'].includes(status)) throw new HttpError(422, 'invalid_status', 'status: approved oder rejected');
+    if (status === 'rejected' && !String(note ?? '').trim()) throw new HttpError(422, 'note_required', 'Bitte eine Begründung für die Ablehnung angeben.');
+    const { rows: [a] } = isUuid(req.params.id)
+      ? await pool.query('UPDATE animals SET review_status = $2, review_note = $3 WHERE id = $1 RETURNING id, shelter_id, name', [req.params.id, status, note?.trim() || null])
+      : { rows: [] };
+    if (!a) throw new HttpError(404, 'not_found', 'Tier nicht gefunden.');
+    const { rows: owners } = await pool.query('SELECT email FROM shelter_members WHERE shelter_id = $1', [a.shelter_id]);
+    for (const o of owners) {
+      await sendMail({ to: o.email, subject: status === 'approved' ? `${a.name} ist jetzt sichtbar` : `${a.name} wurde nicht freigegeben`,
+        text: status === 'approved' ? 'Deine Anzeige wurde geprüft und ist jetzt öffentlich.' : `Deine Anzeige wurde nicht freigegeben.\n\nBegründung: ${note}` }).catch(() => {});
+    }
+    res.json(animalOut(await readAnimal(a.id)));
+  }));
+
   v1.get('/admin/shelters', requireAdmin, asyncRoute(async (req, res) => {
     const status = ['pending', 'active', 'suspended'].includes(req.query.status) ? req.query.status : 'pending';
     const { rows } = await pool.query(`SELECT s.*, (SELECT array_agg(email) FROM shelter_members m WHERE m.shelter_id = s.id) AS members
@@ -246,6 +265,8 @@ export function createApp({ staticDir } = {}) {
   app.use('/media', express.static(uploadDir, { maxAge: '30d', immutable: true, index: false, fallthrough: false }));
 
   app.get('/openapi.json', (_req, res) => res.json(openapi));
+  // Der Fragebogen läuft im Browser mit derselben Datei wie auf dem Server
+  app.get('/js/questionnaire.js', (_req, res) => res.sendFile(fileURLToPath(new URL('./questionnaire.js', import.meta.url))));
   if (staticDir) {
     app.use(express.static(staticDir));
   }

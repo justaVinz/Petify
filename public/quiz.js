@@ -53,7 +53,7 @@ function renderIntro() {
   const c = state.coords;
   app.innerHTML = `<section class="wrap intro">
     <h1>Welches Tier aus dem Tierheim <em>passt zu dir?</em></h1>
-    <p>Beantworte 13 kurze Fragen zu deiner Persönlichkeit und deinem Alltag. Am Ende bekommst du Tiere aus Tierheimen in deiner Nähe, die zu dir passen – mit Charakterbogen und Link zur Vermittlungsseite.</p>
+    <p>Beantworte 13 kurze Fragen zu deiner Persönlichkeit und deinem Alltag. Am Ende bekommst du Tiere aus Tierheimen und geprüften Privatabgaben in deiner Nähe, die zu dir passen – mit Charakterbogen und direkter Anfrage.</p>
     <form class="place" id="place" novalidate>
       <h2 class="place-title">Wo suchst du?</h2>
       <button type="button" class="btn primary locate-btn" id="locate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>${c ? 'Standort erneut abfragen' : 'Meinen Standort verwenden'}</button>
@@ -156,6 +156,8 @@ function typeOf(a) {
 async function renderResult() {
   app.innerHTML = '<section class="wrap loading" aria-busy="true">Suche passende Tiere …</section>';
   const p = profile(state.answers);
+  // Für Anfragen: Konto- und Tierseite übernehmen das Profil nach der Anmeldung
+  try { localStorage.setItem('pfotenmatch-profile-v1', JSON.stringify(p)); } catch { /* privater Modus */ }
   const location = state.coords ? { lat: state.coords.lat, lng: state.coords.lng, radiusKm: state.radius } : { postalCode: state.plz, radiusKm: state.radius };
   let data;
   try {
@@ -188,7 +190,7 @@ async function renderResult() {
         <div class="match" aria-label="${score} Prozent Passung"><b>${score}%</b><span>Passung</span></div></div>
       <dl class="form">
         <div><dt>Alter</dt><dd>${esc(ageText(x.age))}</dd></div><div><dt>Geschlecht</dt><dd>${esc(SEX[x.sex])}${x.neutered ? ', kastriert' : ''}</dd></div>
-        <div><dt>Im Tierheim seit</dt><dd>${esc(monthYear(x.intakeDate))}</dd></div><div><dt>Allein bleiben</dt><dd>${esc(alone)}</dd></div>
+        ${x.shelter.kind === 'private' ? '<div><dt>Abgabe</dt><dd>privat, geprüft</dd></div>' : `<div><dt>Im Tierheim seit</dt><dd>${esc(monthYear(x.intakeDate))}</dd></div>`}<div><dt>Allein bleiben</dt><dd>${esc(alone)}</dd></div>
         <div><dt>Kinder</dt><dd>${esc(kids)}</dd></div><div><dt>Andere Tiere</dt><dd>${esc(others)}</dd></div>
       </dl>
       <div class="scales">
@@ -200,7 +202,8 @@ async function renderResult() {
       <p class="about">${esc(x.description)}${x.idealHome ? ` <strong>Wunsch-Zuhause:</strong> ${esc(x.idealHome)}` : ''}</p>
       <div class="why"><h4>Warum ${esc(x.name)} zu dir passt</h4><ul>${reasons.map((r) => `<li>${esc(r)}</li>`).join('')}${caveats.map((c) => `<li class="caveat">Achtung: ${esc(c)}</li>`).join('')}</ul></div>
       <div class="sheet-foot"><span class="shelter"><b>${esc(x.shelter.name)}</b> · ${x.distanceKm !== null ? `${String(x.distanceKm).replace('.', ',')} km` : esc(x.shelter.city)}</span>
-        <a class="btn primary" href="${esc(x.url)}" target="_blank" rel="noopener">Zum Tier auf der Tierheim-Seite</a></div>
+        <span class="actions"><a class="btn primary" href="/tier.html?id=${x.id}#anfrage">Anfrage stellen</a>
+        ${x.shelter.kind === 'shelter' && x.url && !x.url.includes('/tier.html') ? `<a class="btn ghost" href="${esc(x.url)}" target="_blank" rel="noopener">Tierheim-Seite</a>` : `<a class="btn ghost" href="/tier.html?id=${x.id}">Mehr erfahren</a>`}</span></div>
     </article>`;
   };
 

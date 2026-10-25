@@ -11,7 +11,7 @@ const examples = !process.argv.includes('--no-examples');
 const client = await pool.connect();
 try {
   await client.query('BEGIN');
-  if (reset) await client.query('DROP TABLE IF EXISTS imports, photos, sessions, login_tokens, shelter_members, users, animals, shelters CASCADE');
+  if (reset) await client.query('DROP TABLE IF EXISTS adoption_requests, user_profiles, imports, photos, sessions, login_tokens, shelter_members, users, animals, shelters CASCADE');
   await client.query(await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8'));
   const { rows: [{ n }] } = await client.query('SELECT count(*)::int AS n FROM shelters');
   if (examples && n === 0) {

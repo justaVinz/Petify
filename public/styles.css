@@ -231,3 +231,65 @@ a { color: var(--cocoa); }
 .inline-form .field { flex: 1 1 220px; }
 .key-box { font: 500 .9rem var(--mono); word-break: break-all; padding: 10px 12px; border-radius: 10px; background: var(--paper); border: 1px dashed var(--cocoa); }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+
+/* --- Formular: Tierprofil mit Fragebogen --- */
+.field .plain, .field textarea { font-family: var(--body); letter-spacing: 0; }
+.field textarea { font-size: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); width: 100%; resize: vertical; color: inherit; font: 16px/1.45 var(--body); }
+.field small { font-size: .8rem; }
+.form-head, .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.form-sec { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 14px 0 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.form-sec legend { font: 800 1rem var(--display); padding: 0 8px 0 0; }
+.seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); justify-self: start; max-width: 100%; }
+.seg button { border: 0; background: none; padding: 8px 14px; min-height: 40px; border-radius: 999px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.seg button small { font-weight: 500; font-size: .72rem; }
+.seg button[aria-checked="true"] { background: var(--cocoa); color: var(--paper); }
+[data-pane] { display: grid; gap: 12px; min-width: 0; }
+[data-pane][hidden] { display: none; }
+.q-block { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
+.q-title { margin: 0; font-weight: 700; }
+.q-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-opts button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 12px; min-height: 40px; font-size: .9rem; text-align: left; cursor: pointer; }
+.q-opts button[aria-checked="true"] { background: var(--cocoa); border-color: var(--cocoa); color: var(--paper); }
+.scale-preview { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--cocoa-soft); }
+.scale-preview h3 { font-size: 1rem; }
+.range-list { display: grid; gap: 10px; }
+.range-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.range-row small { grid-column: 2; }
+.range-row input { accent-color: var(--cocoa); width: 100%; min-height: 32px; }
+.checks { display: flex; flex-wrap: wrap; gap: 16px; }
+.checks label { display: flex; gap: 8px; align-items: center; min-height: 40px; }
+.checks input { width: 20px; height: 20px; accent-color: var(--cocoa); }
+@media (max-width: 520px) { .range-row { grid-template-columns: minmax(0, 1fr); } .range-row small { grid-column: 1; } }
+
+/* --- Anfragen --- */
+.count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--cocoa); color: var(--paper); font: 500 .72rem var(--mono); }
+.tabs.small button { padding: 8px 10px; font-size: .9rem; }
+.req-list { display: grid; gap: 12px; }
+.req { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); min-width: 0; }
+.req-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.req-head h3 { font-size: 1.05rem; }
+.req .match { flex: none; }
+.req blockquote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--honey); background: var(--card); border-radius: 0 10px 10px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.facts li { font-size: .82rem; padding: 3px 10px; border-radius: 999px; background: var(--cocoa-soft); }
+.mini-traits { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px 14px; font-size: .8rem; color: var(--muted); }
+.mini-traits span { display: grid; gap: 3px; }
+.mini-traits i { display: block; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--cocoa) var(--v), var(--line) var(--v)); }
+.caveat { color: var(--warn); margin: 0; font-size: .9rem; }
+.status-pill { white-space: nowrap; font: 500 .72rem var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.status-pill.sent, .status-pill.waitlist { background: var(--honey-soft); border-color: var(--honey); }
+.status-pill.accepted { background: var(--cocoa); color: var(--paper); border-color: var(--cocoa); }
+.status-pill.declined_auto, .status-pill.declined, .status-pill.expired, .status-pill.closed, .status-pill.withdrawn { color: var(--muted); }
+.badge.rejected { color: var(--warn); border-color: var(--warn); }
+
+/* --- Tierseite --- */
+.animal-page { display: grid; gap: 18px; padding-block: 16px; }
+.gallery { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(78%, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 16px; }
+.gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; scroll-snap-align: start; background: var(--cocoa-soft); }
+.gallery.single { grid-auto-columns: 100%; }
+.check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.check-list li { display: grid; grid-template-columns: 24px 1fr; gap: 8px; align-items: start; }
+.check-list li::before { content: "✓"; color: var(--cocoa); font-weight: 800; }
+.check-list li.no::before { content: "✗"; color: var(--warn); }
+.counter { font: 500 .78rem var(--mono); color: var(--muted); justify-self: end; }
+@media (min-width: 760px) { .gallery { grid-auto-columns: minmax(48%, 1fr); } }

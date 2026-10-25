@@ -74,7 +74,7 @@ test('Schema-Prüfung liefert verständliche Fehler', async () => {
   const res = await call('POST', '/v1/animals', { key: apiKey, body: bad });
   assert.equal(res.status, 422);
   const text = res.body.error.details.join('\n');
-  assert.match(text, /url: Pflichtfeld fehlt/);
+  assert.match(text, /url: Pflichtfeld/);
   assert.match(text, /species: erlaubt sind/);
   assert.match(text, /character\.activity/);
   assert.match(text, /unbekanntes Feld „extra“/);
